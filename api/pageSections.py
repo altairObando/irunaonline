@@ -4,4 +4,4 @@ class PageSection:
         self.recoveryItems = "/items/Recovery"
         self.statusItems = "/items/Status"
     def itemSection(self, itemName):
-        return "/items/%s" % itemName
+        return "/item/%s" % itemName

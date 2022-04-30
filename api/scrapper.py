@@ -1,10 +1,11 @@
+import json
 import requests
 from bs4 import BeautifulSoup
 from .pageSections import PageSection
 
 class Scrapper:
     def __init__(self):
-        self.baseUrl="http://www.iruna-online.info/"
+        self.baseUrl="http://www.iruna-online.info"
         self.errorCodes = [ 500,400,403]
         self.sections = PageSection()
 
@@ -21,6 +22,16 @@ class Scrapper:
             print("No page found") 
             return None
     
+    def GetItemContent(self, item, replaceText):
+        anchor = item.find("a")
+        divDesc= item.find("div", { "class": "ds"})
+        name = anchor.text.replace(replaceText,"").strip()
+        href = anchor['href']
+        desc = ''
+        if divDesc is not None:
+            desc = divDesc.text
+        return { "name" : name, "description": desc, "uri": href }
+
     def GetRecoveryItems(self):
         content = self.GetContentBySection(self.sections.recoveryItems)
         if content is None:
@@ -30,17 +41,8 @@ class Scrapper:
         result=[]
         replaceText = "[Recovery]"
         for item in items:
-            basic    = item.find("a")
-            descItem = item.find("div", {"class": "ds"})
-            name =""
-            desc =""
-            href=""
-            if basic:
-                name = basic.text.replace(replaceText, "").strip()
-                href = basic["href"]
-            if descItem:
-                desc = descItem.text
-            result.append({ "name" : name, "description": desc, "uri": href })
+            i = self.GetItemContent(item, replaceText)
+            result.append(i)
         return result
 
     def GetPets(self):
@@ -67,4 +69,75 @@ class Scrapper:
         page = self.GetContentBySection(self.sections.itemSection(itemName))
         if page is None:
             return []
-        itemContent = page.find('div', { 'class': "default_attr" })
+        itemContent = page.find_all('div', { 'class': "default_attr" })
+        replaceText = "[Recovery]"
+
+        itemInfo = self.GetItemContent(itemContent, replaceText)
+        # Drops from monsters section.
+        dropContainer = itemContent.parent.find_next_siblings('div')[0]
+        dropFromMonster = dropContainer.find("b")
+        if dropFromMonster is not None and dropFromMonster.text == "Monsters":
+            monsters = self.GetMonsterInfo(itemContent)
+            itemInfo["monsters"] = list(map(json.loads, monsters))
+        ## end Drop section
+        itemContent.find("b")        
+        return itemInfo
+    
+    def GetMonsterInfo(self, container):
+        monsterContainer = container.parent.find_next_siblings('div')[1]
+        monsters = []; current = {}; attr  = []; drops = []; zones = []
+        settingDrops = False; allSeted = False; validNotNamedFields = ['\n\n\nDrop:\n', ]
+        for row in monsterContainer:
+            if not row.name and row.text not in validNotNamedFields and 'Attr' not in row.text:
+                continue
+
+            if not current.get('imgSrc') and row.name == "img":
+                current['imgSrc'] = row['src']
+                continue
+
+            if not current.get('name') and row.name == 'b':
+                name = row.find('a')
+                current['name'] = name.text
+                continue
+
+            if row.text == '\n\n\nDrop:\n':
+                drops = []
+                settingDrops = True
+                continue
+
+            if settingDrops and row.name == 'a':
+                mdrp = {}
+                mdrp['href'] = row['href']
+                mdrp['name'] = row.text
+                drops.append(mdrp)
+                continue
+
+            if settingDrops and row.name == 'br':
+                settingDrops = False
+                continue
+
+            if 'Attr' in row.text:
+                attr.append(row.text.replace('\n\n','')[4:-1])
+                continue
+            
+            if current.get('name') and row.name == 'a': ## drop Zone
+                zones.append(row.text)
+                if 'See Map' in row.text:
+                    allSeted = True
+                continue
+            
+            if allSeted:
+                current["drop"] = drops
+                current['attr'] = attr
+                current['zone'] = zones
+                monsters.append(json.dumps(current))
+                current.clear()
+                drops.clear()
+                attr.clear()
+                zones.clear()
+                current = {}
+                allSeted = False
+                settingDrops = False
+        
+        return monsters
+

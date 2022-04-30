@@ -11,4 +11,4 @@ def recoveryItems(req):
     return JsonResponse(api.GetRecoveryItems(), safe=False)
 
 def item(req, itemname):
-    return JsonResponse({}, safe=False)
+    return JsonResponse(api.GetFullItem(itemname), safe=False)
