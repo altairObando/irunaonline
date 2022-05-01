@@ -72,7 +72,15 @@ class Scrapper:
         itemContent = page.find('div', { 'class': "default_attr" })
         itemInfo = self.GetItemContent(itemContent)
         sections = self.GetAllSections(page)
-        itemInfo["more"] = sections      
+        itemInfo["more"] = sections 
+        ## Searching item images
+        itemImage = page.find('div', { 'id': 'item_images'})
+        if itemImage and itemImage is not None:
+            img = itemImage.find("img")
+            if img:
+                name = img["alt"].replace('item_image_','').strip()
+                src = img["src"]
+                itemInfo["img"] = { 'name': name, 'src': src }        
         return itemInfo
     
     def GetMonsterInfo(self, monsterContainer):
@@ -164,11 +172,11 @@ class Scrapper:
                 continue
 
             if row.name == "b" and not currentItem.get("name"):
-                currentItem["name"] = row.text
+                currentItem["name"] = row.text.strip()  
                 continue
 
             if row.name is None and "Lv" in row.text:
-                currentItem["lvRequired"] = row.text
+                currentItem["lvRequired"] = row.text.strip()
                 continue
 
             if row.name == "a":
@@ -182,7 +190,8 @@ class Scrapper:
                 currentItem.clear()
                 materials.clear()
                 ## Set the new item name.
-                currentItem["name"] = row.text
+                currentItem["name"] = row.text.strip()
+                continue
 
         return items
 
@@ -206,9 +215,13 @@ class Scrapper:
                 result["Blacksmith"] = list(map(json.loads, temp))
                 continue 
 
-            if title.text == "Materials":
+            if title.text == "Production":
                 temp = self.GetProductionInfo(sectionInfo)
                 result["Production"] = list(map(json.loads, temp))
-                continue 
+                continue
 
+            if title.text == "Materials":
+                temp = self.GetProductionInfo(sectionInfo)
+                result["Materials"] = list(map(json.loads, temp))
+                continue      
         return result
