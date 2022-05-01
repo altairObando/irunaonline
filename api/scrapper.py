@@ -22,10 +22,10 @@ class Scrapper:
             print("No page found") 
             return None
     
-    def GetItemContent(self, item, replaceText):
+    def GetItemContent(self, item):
         anchor = item.find("a")
         divDesc= item.find("div", { "class": "ds"})
-        name = anchor.text.replace(replaceText,"").strip()
+        name = anchor.text.strip()
         href = anchor['href']
         desc = ''
         if divDesc is not None:
@@ -69,22 +69,13 @@ class Scrapper:
         page = self.GetContentBySection(self.sections.itemSection(itemName))
         if page is None:
             return []
-        itemContent = page.find_all('div', { 'class': "default_attr" })
-        replaceText = "[Recovery]"
-
-        itemInfo = self.GetItemContent(itemContent, replaceText)
-        # Drops from monsters section.
-        dropContainer = itemContent.parent.find_next_siblings('div')[0]
-        dropFromMonster = dropContainer.find("b")
-        if dropFromMonster is not None and dropFromMonster.text == "Monsters":
-            monsters = self.GetMonsterInfo(itemContent)
-            itemInfo["monsters"] = list(map(json.loads, monsters))
-        ## end Drop section
-        itemContent.find("b")        
+        itemContent = page.find('div', { 'class': "default_attr" })
+        itemInfo = self.GetItemContent(itemContent)
+        sections = self.GetAllSections(page)
+        itemInfo["more"] = sections      
         return itemInfo
     
-    def GetMonsterInfo(self, container):
-        monsterContainer = container.parent.find_next_siblings('div')[1]
+    def GetMonsterInfo(self, monsterContainer):
         monsters = []; current = {}; attr  = []; drops = []; zones = []
         settingDrops = False; allSeted = False; validNotNamedFields = ['\n\n\nDrop:\n', ]
         for row in monsterContainer:
@@ -140,4 +131,84 @@ class Scrapper:
                 settingDrops = False
         
         return monsters
+    
+    def GetBlacksmithInfo(self, blackContainer):
+        items = []
+        currentItem = {}
+        materials   = []
+        for row in blackContainer:
+            text = row.text.replace('\n','')
+            if row == None or row.name == "br" or ":" in text or (row.name == None and text == ''):
+                continue
+            if row.name and row.name == "b" and not currentItem.get("name"):
+                currentItem["name"] = text
+                continue
 
+            if row.name == "a" and "x" in text:
+                materials.append(text)
+                continue
+
+            if row.name == "a" and "x" not in text:
+                currentItem["materials"] = materials
+                currentItem["city"] = text
+                items.append(json.dumps(currentItem))
+                currentItem.clear()
+                materials.clear()
+        return items
+    
+    def GetProductionInfo(self, container):
+        items =[]; currentItem = {}; materials = []
+        lastIndex = len(container) - 1
+        for index, row in enumerate(list(container)):
+            if row is None: 
+                continue
+
+            if row.name == "b" and not currentItem.get("name"):
+                currentItem["name"] = row.text
+                continue
+
+            if row.name is None and "Lv" in row.text:
+                currentItem["lvRequired"] = row.text
+                continue
+
+            if row.name == "a":
+                order = len(materials) +1
+                materials.append("%d : %s" %(order, row.text))
+                continue
+            ## termino de buscar materiales
+            if (row.name == "b" and currentItem.get("name")) or lastIndex == index:
+                currentItem["materials"] = materials
+                items.append(json.dumps(currentItem))
+                currentItem.clear()
+                materials.clear()
+                ## Set the new item name.
+                currentItem["name"] = row.text
+
+        return items
+
+
+
+    def GetAllSections(self, container):
+        sections = container.find_all('div', { 'class': 'row'})
+        result = {}
+        for section in sections:
+            title = section.find("b")
+            if not title:
+                continue
+            sectionInfo = section.find_next_siblings('div')[0]
+            if title.text == "Monsters":
+                temp = self.GetMonsterInfo(sectionInfo)
+                result["Monsters"] = list(map(json.loads, temp))
+                continue 
+
+            if title.text == "Blacksmith":
+                temp = self.GetBlacksmithInfo(sectionInfo)
+                result["Blacksmith"] = list(map(json.loads, temp))
+                continue 
+
+            if title.text == "Materials":
+                temp = self.GetProductionInfo(sectionInfo)
+                result["Production"] = list(map(json.loads, temp))
+                continue 
+
+        return result
