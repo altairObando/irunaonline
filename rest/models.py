@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.contrib import admin
 # Create your models here.
 class Item(models.Model):
     pass
@@ -17,6 +17,15 @@ class JobSkill(models.Model):
     description = models.TextField(max_length=250,null=True,blank=True)
     def __str__(self):
         return self.name
+    @admin.display
+    def subSkills(self):
+        sub = Skill.objects.filter(skillParent=self)
+        if sub is None or len(sub) <=0:
+            return "sin falla"
+        s=","
+        return s.join(list(map(lambda item: item.name, list(sub))))
+
+
 
 class Skill(models.Model):
     skillParent = models.ForeignKey(JobSkill, on_delete=models.CASCADE, verbose_name="Skill")

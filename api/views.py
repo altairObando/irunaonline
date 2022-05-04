@@ -1,6 +1,11 @@
+from ast import arg
+from asyncio import subprocess
 from django.http import JsonResponse
 from .scrapper import Scrapper
 from rest.models import Job, JobSkill, Skill
+from threading import Thread
+
+import time
 # Create your views here.
 api = Scrapper()
 
@@ -25,12 +30,55 @@ def skills(request,job):
 
     return JsonResponse(requestSkill, safe=False)
 
+def sync(request):
+    ## Store scrap models
+    ## Store Skills
+    list_jobs = [
+        "Adventurer",
+        "Alchemist",
+        "Assassin",
+        "Beast Knight",
+        "Bishop",
+        "Cleric",
+        "Enchanter",
+        "Gladiator",
+        "High Wizard",
+        "Hunter",
+        "Knight",
+        "Mage",
+        "Minstrel",
+        "Monk",
+        "Necromancer",
+        "Ninja",
+        "Paladin",
+        "Samurai",
+        "Servant",
+        "Sniper",
+        "Summoner",
+        "Warrior",
+        "Wizard",
+    ]
+    for job in list_jobs:
+        try:
+            thread = Thread(target=GetAndUpdateSkill,args=(job,))
+            thread.start()
+        except Exception as e:
+            return JsonResponse({ "msg": "error saving " + job, "ex": e },safe=False)
+    return JsonResponse({"msg": "Sync Jobs started"}, safe=False)
+
+
+def GetAndUpdateSkill(jobname):
+    info = api.GetSkills(jobname)
+    updateSkills(jobname, info)
 
 def updateSkills(job, requestSkill):
     #Recuperar el job
-    dbJob = Job.objects.get(name=job)
-    if dbJob is None:
+    dbJob = Job.objects.filter(name=job).first()
+    if dbJob is None and len(requestSkill) <= 0:
         return JsonResponse({'error': True, 'msg': ('%s not found in db' % job)})
+    if dbJob is None:
+        dbJob = Job.objects.create(name=job, desc=job)
+        dbJob.save()
     for skill in requestSkill:
         currentSkill = JobSkill.objects.filter(name=skill.get("name")).first()
         if currentSkill is None:
