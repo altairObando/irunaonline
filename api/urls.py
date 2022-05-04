@@ -1,4 +1,3 @@
-from tkinter import N
 from django.urls import path
 from .views import index, recoveryItems, item, search, skills
 urlpatterns = [

@@ -17,7 +17,7 @@ class Scrapper:
         """
         try:
             response = requests.get(self.baseUrl + sectionName);
-            if response is not None and response.status_code not in self.errorCodes:
+            if response is not None:
                 return BeautifulSoup(response.content, 'html.parser')
             return None
         except:
@@ -294,7 +294,7 @@ class Scrapper:
             return results
 
         currentSkill = {}
-        currentSubSkill = {}
+        currentSubSkill = []
         allSkills = []
 
         last = len(sections) -1
@@ -327,10 +327,11 @@ class Scrapper:
                         if sub.text.strip() is not None and sub.text.strip() != "":
                             subSkill["name"] = sub.text.strip()
                     if len(subSkill) > 1:
-                        currentSubSkill[subSkill["name"]] = subSkill
+                        currentSubSkill.append(subSkill)
                     continue
                 if "Item -" in row.text:
-                    subSkill = currentSubSkill.get(list(currentSubSkill.keys())[-1])
+                    
+                    subSkill = currentSubSkill[-1]
                     if subSkill is not None:
                         subSkill["item"] = row.text.strip().split(" - ")[1]
                     if row.name == "a":
