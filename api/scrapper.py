@@ -30,16 +30,33 @@ class Scrapper:
         name = anchor.text.strip()
         href = anchor['href']
         desc = ''
+        atk = 0
+        defe= 0
+        notes=''
         if divDesc is not None:
             desc = divDesc.text.strip()
-        return { "name" : name, "description": desc, "uri": href }
+        for s in item:
+            rowName = s.text.strip()[0:4]
+            if s.text and 'ATK:' in rowName:
+                sp = s.text.replace('ATK:','').strip().split(' ') #'92 DEF: 2'
+                value= sp[0]
+                atk = value
+                if 'DEF:' in " ".join(sp):
+                    defe = sp[2]
+                continue
+            if s.text and 'DEF:' in rowName:
+                defe = s.text.strip().replace('DEF:','').strip()
+            if s.text and 'Notes:' in s.text.strip():
+                notes = s.text.replace('Notes: ?','').strip()
+            
+        return { "name" : name, "description": desc, "uri": href, "atk": atk,'def': defe, 'notes' : notes }
 
-    def GetRecoveryItems(self):
-        content = self.GetContentBySection(self.sections.recoveryItems)
+    def GetRecoveryItems(self, section):
+        content = self.GetContentBySection("/items/%s" % section)
         if content is None:
             return []
         
-        items = content.findAll('div', {'class':'Recovery'})
+        items = content.findAll('div', {'class': section})
         result=[]
         for item in items:
             i = self.GetItemContent(item)
@@ -89,10 +106,10 @@ class Scrapper:
         return itemInfo
     
     def GetMonsterInfo(self, monsterContainer):
-        monsters = []; current = {}; attr  = []; drops = []; zones = []
+        monsters = []; current = {}; attr  = []; Weak=[]; drops = []; zones = []
         settingDrops = False; allSeted = False; validNotNamedFields = ['\n\n\nDrop:\n', ]
         for row in monsterContainer:
-            if not row.name and row.text not in validNotNamedFields and 'Attr' not in row.text:
+            if not row.name and row.text not in validNotNamedFields and 'Attr' not in row.text and 'Weak' not in row.text:
                 continue
 
             if not current.get('imgSrc') and row.name == "img":
@@ -121,23 +138,30 @@ class Scrapper:
                 continue
 
             if 'Attr' in row.text:
-                attr.append(row.text.replace('\n\n','')[4:-1])
+                attr.append(row.text.replace('\n','').replace('Attr','').replace(':','').strip())
+                continue
+
+            if 'Weak' in row.text:
+                Weak.append(row.text.replace('\n','').replace('Weak','').replace(':','').strip())
                 continue
             
             if current.get('name') and row.name == 'a': ## drop Zone
-                zones.append(row.text)
                 if 'See Map' in row.text:
                     allSeted = True
+                else:
+                    zones.append(row.text)
                 continue
             
             if allSeted:
                 current["drop"] = drops
                 current['attr'] = attr
+                current['weak'] = Weak
                 current['zone'] = zones
                 monsters.append(json.dumps(current))
                 current.clear()
                 drops.clear()
                 attr.clear()
+                Weak.clear()
                 zones.clear()
                 current = {}
                 allSeted = False
@@ -238,6 +262,13 @@ class Scrapper:
         searchResults = {}
         for option in optionResults:
             sections = page.find_all('div', { 'class' : option })
+            if option == "Monsters":
+                sectionMonsters = page.find(lambda tag:tag.name =="b" and option in tag.text)
+                if sectionMonsters:
+                    monst  = sectionMonsters.parent.parent.find_next_siblings('div')[0]
+                    result = self.GetMonsterInfo(monst)
+                    searchResults[option] = list(map(json.loads, result))
+                continue
             for section in sections:
                 if searchResults.get(option) is None:
                     searchResults[option] = []

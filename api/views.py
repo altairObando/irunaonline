@@ -1,10 +1,11 @@
 from ast import arg
 from asyncio import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from django.http import JsonResponse
 from .scrapper import Scrapper
-from rest.models import Job, JobSkill, Skill
+from rest.models import Job, JobSkill, Skill, Item
 from threading import Thread
-
+from django.db import transaction
 import time
 # Create your views here.
 api = Scrapper()
@@ -12,8 +13,8 @@ api = Scrapper()
 def index(_):
     return JsonResponse(api.GetPets(), safe=False)
 
-def recoveryItems(_):
-    return JsonResponse(api.GetRecoveryItems(), safe=False)
+def recoveryItems(_, section):
+    return JsonResponse(api.GetRecoveryItems(section), safe=False)
 
 def item(_, itemname):
     return JsonResponse(api.GetFullItem(itemname), safe=False)
@@ -30,7 +31,7 @@ def skills(request,job):
 
     return JsonResponse(requestSkill, safe=False)
 
-def sync(request):
+def sync(_):
     ## Store scrap models
     ## Store Skills
     list_jobs = [
@@ -88,3 +89,40 @@ def updateSkills(job, requestSkill):
             if len(Skill.objects.filter(name=newSubSkill.get("name"))) <= 0:
                 sub = Skill.objects.create(skillParent = currentSkill,ref=newSubSkill.get("href"),level=newSubSkill.get("lvl"),name=newSubSkill.get("name"),item=newSubSkill.get("item"),itemRef=newSubSkill.get("itemRef"))
                 sub.save()
+
+def syncItems(_):
+    listItems = ["Recovery","Status","Strengthening","Teleport","Skills","Chests","Collectibles","Ores","IslandItems","Points","Pets","Other"]
+    for section in listItems:
+        try:
+            th = Thread(target=GetAndUpdateItem,args=(section,))
+            th.start()
+        except Exception as e:
+            return JsonResponse(e, safe=False)
+    return JsonResponse({"msg": "Sync Items started"}, safe=False)
+
+def syncEquipments(_):
+    listItems = ["Swords","Bows","Canes","Claws","Throwing","Armor","Additional","Special","Crystas","AlCrystas","RelicCrystas",]
+    pool = ThreadPoolExecutor(max_workers=2)
+
+    for section in listItems:
+        try:
+            # th = Thread(target=GetAndUpdateItem,args=(section,))
+            # th.start()
+            pool.submit(GetAndUpdateItem,section)
+        except Exception as e:
+            return JsonResponse(e, safe=False)
+    pool.shutdown(True)
+    return JsonResponse({"msg": "Sync Equipments started"}, safe=False)
+
+def GetAndUpdateItem(section):
+    items = api.GetRecoveryItems(section)
+    ## Check if exists
+    newItems =[]
+    for item in items:
+        with transaction.atomic():
+            i = Item.objects.filter(name=item.get("name")).exists()
+            if i:
+                continue
+            newItems.append(Item(name=item.get("name"),desc=item.get("description"),uri=item.get("uri"),type=section))
+    if len(newItems) > 0:
+        Item.objects.bulk_create(newItems)

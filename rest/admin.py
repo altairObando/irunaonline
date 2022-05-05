@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Job, JobSkill,Skill
+from .models import Job, JobSkill,Skill, Item
 # Register your models here.
 
 
@@ -19,3 +19,9 @@ class JobAdmin(admin.ModelAdmin):
 class JobSkillAdmin(admin.ModelAdmin):
     list_filter = ("Job", )
     list_display = ('Job','name','subSkills')
+
+@admin.register(Item)
+class ItemAdmin(admin.ModelAdmin):
+    list_filter = ('type',)
+    search_fields = ('name','desc')
+    list_display = ('name','desc','type',)
