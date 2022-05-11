@@ -1,3 +1,4 @@
+import json
 from statistics import mode
 from turtle import back
 from django.db import models
@@ -6,10 +7,15 @@ from django.contrib import admin
 class Item(models.Model):
     name = models.CharField(max_length=200)
     desc = models.TextField(blank=True, null=True,verbose_name="Description")
-    uri = models.TextField(blank=True,null=True)
-    type= models.CharField(max_length=100,blank=True,null=True, verbose_name="Item Type") ## Recovery,Item,Sword,etc..
-    zone=models.CharField(max_length=100,null=True  )
-    def __string__(self):
+    uri  = models.TextField(blank=True,null=True)
+    type = models.CharField(max_length=100,blank=True,null=True, verbose_name="Item Type") ## Recovery,Item,Sword,etc..
+    zone = models.CharField(max_length=100,null=True)
+    atk  = models.CharField(max_length=50, null=True,blank=True)
+    deff = models.CharField(max_length=50, null=True,blank=True)
+    notes= models.CharField(max_length=50, null=True,blank=True)
+    imageAlt = models.CharField(max_length=100, null=True,blank=True)
+    imgSrc   = models.CharField(max_length=250, null=True,blank=True)
+    def __str__(self):
         return self.name
 
 class Monster(models.Model):
@@ -19,9 +25,15 @@ class Monster(models.Model):
     weak =models.CharField(max_length=50,null=True)
     #img = models.ImageField(verbose_name="Image")
 
+    def __str__(self):
+        return self.name
+
 class MonsterDrops(models.Model):
     baseMonster = models.ForeignKey(Monster, on_delete=models.CASCADE)
     baseItem    = models.ForeignKey(Item,on_delete=models.CASCADE)
+    
+    def __str__(self):
+        return json.dumps({"monsterId": self.baseMonster.id, "monsterName": self.baseMonster.name, "itemId": self.baseItem.id, "itemName": self.baseItem.name })
 
 class BlackSmithFormula(models.Model):
     itemResult = models.ForeignKey(Item, models.CASCADE)

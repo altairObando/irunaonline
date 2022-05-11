@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import index, recoveryItems, item, search, skills, sync,syncItems,syncEquipments
+from .views import index, recoveryItems, item, search, skills, syncDB, syncItems,syncEquipments
 urlpatterns = [
     ## Pets information
     path('pets/', index, name="petskills" ),
@@ -12,7 +12,7 @@ urlpatterns = [
     ## Skills of a job
     path('skills/<job>', skills),
     ## Sync all Skills to DB
-    path('sync/',sync),
+    path('sync/',syncDB),
     path('syncItems/', syncItems),
     path('syncEquipments/',syncEquipments)
 ]

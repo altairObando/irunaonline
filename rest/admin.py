@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Job, JobSkill,Skill, Item
+from .models import Job, JobSkill,Skill, Item, Monster, MonsterDrops
 # Register your models here.
 
 
@@ -25,3 +25,11 @@ class ItemAdmin(admin.ModelAdmin):
     list_filter = ('type',)
     search_fields = ('name','desc')
     list_display = ('name','desc','type',)
+
+@admin.register(Monster)
+class MonsterAdmin(admin.ModelAdmin):
+    list_display = ('name','imgSrc', 'attr')
+@admin.register(MonsterDrops)
+class DropsAdmin(admin.ModelAdmin):
+    search_fields = ('baseItem__name',)
+    list_display=('baseMonster', 'baseItem')
