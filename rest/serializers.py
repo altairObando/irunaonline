@@ -11,7 +11,7 @@ class ItemSerializer(serializers.ModelSerializer):
     monsterdrops_set = DropSerializer(many=True, read_only=True)
     class Meta:
         model = Item
-        fields = ["id","name","desc","uri","type","monsterdrops_set" ]
+        fields = ["id","name","desc","imageAlt","imgSrc","uri","type","atk","deff","notes","monsterdrops_set" ]
 
 class JobSerializer(serializers.ModelSerializer):
     class Meta:
