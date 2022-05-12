@@ -26,7 +26,7 @@ class Monster(models.Model):
     #img = models.ImageField(verbose_name="Image")
 
     def __str__(self):
-        return self.name
+        return json.dumps({ "name": self.name, "imgSrc": self.imgSrc, "attr": self.attr, "weak": self.weak })
 
 class MonsterDrops(models.Model):
     baseMonster = models.ForeignKey(Monster, on_delete=models.CASCADE)

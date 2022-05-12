@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Item, Job, Skill,MonsterDrops
 
 class DropSerializer(serializers.ModelSerializer):
-    baseMonster = serializers.SlugRelatedField(many=False,read_only=True, slug_field="name")
+    baseMonster = serializers.StringRelatedField(many=False,read_only=True)
     baseItem = serializers.SlugRelatedField(many=False,read_only=True, slug_field="name")
     class Meta:
         model=MonsterDrops
